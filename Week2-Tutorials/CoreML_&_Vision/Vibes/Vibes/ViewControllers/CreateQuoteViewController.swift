@@ -31,6 +31,8 @@
 /// THE SOFTWARE.
 
 import UIKit
+import CoreML
+import Vision
 
 class CreateQuoteViewController: UIViewController {
   // MARK: - Properties
@@ -74,6 +76,37 @@ class CreateQuoteViewController: UIViewController {
       stickerHeightWidth,
       height: stickerHeightWidth)
     return stickerRect
+  }()
+  
+  // 1
+  private lazy var classificationRequest: VNCoreMLRequest = {
+    do {
+      // 2 Create an instance of the model.
+      let model = try VNCoreMLModel(for: SqueezeNet().model)
+      // 3 Instantiate an image analysis request object based on the model. The completion handler receives the classification results and prints them.
+//      let request = VNCoreMLRequest(model: model) { request, _ in
+//          if let classifications =
+//            request.results as? [VNClassificationObservation] {
+////            print("Classification results: \(classifications)")
+//            let topClassifications = classifications.prefix(2).map {
+//              (confidence: $0.confidence, identifier: $0.identifier)
+//            }
+//            print("Top classifications: \(topClassifications)")
+//          }
+//      }
+      let request = VNCoreMLRequest(model: model) { [weak self] request, error in
+          guard let self = self else {
+            return
+        }
+        self.processClassifications(for: request, error: error)
+      }
+      // 4 Use Vision to crop the input image to match what the model expects.
+      request.imageCropAndScaleOption = .centerCrop
+      return request
+    } catch {
+      // 5 Handle model load errors by killing the app. The model is part of the app bundle so this should never happen
+      fatalError("Failed to load Vision ML model: \(error)")
+    }
   }()
   
   // MARK: - Lifecycle
@@ -172,9 +205,11 @@ extension CreateQuoteViewController: UIImagePickerControllerDelegate, UINavigati
 		starterLabel.isHidden = true
     clearStickersFromCanvas()
     
-    if let quote = getQuote() {
-      quoteTextView.text = quote.text
-    }
+//    if let quote = getQuote() {
+//      quoteTextView.text = quote.text
+//    }
+    
+    classifyImage(image) // triggers the classification request when the user selects an image
   }
 }
 
@@ -212,4 +247,49 @@ extension CreateQuoteViewController: UIGestureRecognizerDelegate {
           completion: nil)
     }
   }
+}
+
+private extension CreateQuoteViewController {
+  func classifyImage(_ image: UIImage) {
+    // 1 Gets the orientation of the image and the CIImage representation.
+    guard let orientation = CGImagePropertyOrientation(
+      rawValue: UInt32(image.imageOrientation.rawValue)) else {
+      return
+    }
+    guard let ciImage = CIImage(image: image) else {
+      fatalError("Unable to create \(CIImage.self) from \(image).")
+    }
+    // 2 Kicks off an asynchronous classification request in a background queue. You create a handler to perform the Vision request, and then schedule the request.
+    DispatchQueue.global(qos: .userInitiated).async {
+      let handler =
+        VNImageRequestHandler(ciImage: ciImage, orientation: orientation)
+      do {
+        try handler.perform([self.classificationRequest])
+      } catch {
+        print("Failed to perform classification.\n\(error.localizedDescription)")
+      }
+    }
+  }
+  
+  ///get a quote using the results of VNClassificationObservation
+  func processClassifications(for request: VNRequest, error: Error?) {
+    DispatchQueue.main.async {
+      // 1 processes the results from an image classification request.
+      if let classifications =
+        request.results as? [VNClassificationObservation] {
+        // 2  extracts the top two predictions using code you’ve seen before
+        let topClassifications = classifications.prefix(2).map {
+          (confidence: $0.confidence, identifier: $0.identifier)
+        }
+        print("Top classifications: \(topClassifications)")
+        let topIdentifiers =
+          topClassifications.map {$0.identifier.lowercased() }
+        // 3 predictions feed into getQuote(for:) to get a matching quote
+        if let quote = self.getQuote(for: topIdentifiers) {
+          self.quoteTextView.text = quote.text
+        }
+      }
+    }
+  }
+
 }
