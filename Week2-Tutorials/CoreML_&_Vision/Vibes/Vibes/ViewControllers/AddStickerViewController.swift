@@ -93,6 +93,7 @@ extension AddStickerViewController {
     didSelectItemAt indexPath: IndexPath
   ) {
     selectedEmoji = emoji[indexPath.item]
-    performSegue(withIdentifier: "AddStickerUnwindSegue", sender: self)
+//    performSegue(withIdentifier: "AddStickerUnwindSegue", sender: self)
+    performSegue(withIdentifier: "AddShortcutSegue", sender: self) //
   }
 }

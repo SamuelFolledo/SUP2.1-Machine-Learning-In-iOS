@@ -152,11 +152,11 @@ private extension CreateQuoteViewController {
     stickerLabel.adjustsFontSizeToFitWidth = true
     
     // Add gesture recognizer
-    stickerLabel.isUserInteractionEnabled = true
-    let panGestureRecognizer = UIPanGestureRecognizer(
-      target: self,
-      action: #selector(handlePanGesture(_:)))
-    stickerLabel.addGestureRecognizer(panGestureRecognizer)
+//    stickerLabel.isUserInteractionEnabled = true
+//    let panGestureRecognizer = UIPanGestureRecognizer(
+//      target: self,
+//      action: #selector(handlePanGesture(_:)))
+//    stickerLabel.addGestureRecognizer(panGestureRecognizer)
     
     // Add sticker to the canvas
     stickerView.addSubview(stickerLabel)
