@@ -78,7 +78,7 @@ class CreateQuoteViewController: UIViewController {
     return stickerRect
   }()
   
-  // 1
+  // 1 add comment
   private lazy var classificationRequest: VNCoreMLRequest = {
     do {
       // 2 Create an instance of the model.
